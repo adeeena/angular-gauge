@@ -7,7 +7,7 @@
 
     gaugeMeterProviderFn.$inject = [];
     function gaugeMeterProviderFn() {
-        var defaultOptions = {
+        let defaultOptions = {
             size: 200,
             value: undefined,
             min: 0,
@@ -19,17 +19,18 @@
             backgroundColor: 'rgba(0, 0, 0, 0.1)',
             duration: 1500,
             fractionSize: null,
-            labelOnly: false,
+            labelOnly: false
         };
 
         this.setOptions = function (customOptions) {
-            if (!(customOptions && angular.isObject(customOptions)))
-                throw new Error('Invalid option type specified in the ngGaugeProvider');
+            if (!(customOptions && angular.isObject(customOptions))) {
+                    throw new Error('Invalid option type specified in the ngGaugeProvider');
+            }
             defaultOptions = angular.merge(defaultOptions, customOptions);
         };
 
-        var ngGauge = {
-            getOptions: function () {
+        const ngGauge = {
+            getOptions() {
                 return angular.extend({}, defaultOptions);
             }
         };
@@ -42,9 +43,7 @@
     gaugeMeterDirective.$inject = ['ngGauge'];
 
     function gaugeMeterDirective(ngGauge) {
-
-
-        var tpl = '<div style="display:inline-block;text-align:center;position:relative;">' +
+        const tpl = '<div style="display:inline-block;text-align:center;position:relative;">' +
             '<span ng-show="{{!labelOnly}}"><u>{{prepend}}</u>' +
             '<span ng-if="fractionSize === null">{{value | number}}</span>' +
             '<span ng-if="fractionSize !== null">{{value | number: fractionSize}}</span>' +
@@ -52,7 +51,7 @@
             '<b>{{ label }}</b>' +
             '<canvas></canvas></div>';
 
-        var Gauge = function (element, options) {
+        const Gauge = function(element, options) {
             this.element = element.find('canvas')[0];
             this.text = element.find('span');
             this.legend = element.find('b');
@@ -63,20 +62,18 @@
         };
 
         Gauge.prototype = {
-
-            init: function () {
+            init() {
                 this.setupStyles();
                 this.create(null, null);
             },
 
-            setupStyles: function () {
-
+            setupStyles() {
                 this.context.canvas.width = this.options.size;
                 this.context.canvas.height = this.options.size;
                 this.context.lineCap = this.options.cap;
                 this.context.lineWidth = this.options.thick;
 
-                var lfs = this.options.size * 0.22,
+                const lfs = this.options.size * 0.22,
                     llh = this.options.size;
 
                 this.text.css({
@@ -98,8 +95,14 @@
                     opacity: 0.8
                 });
 
-                var fs = this.options.labelOnly ? lfs * 0.8 : this.options.size / 13;
-                var lh = this.options.labelOnly ? llh : (5 * fs) + parseInt(this.options.size);
+                let fs, lh;
+                if (this.options.labelOnly) {
+                    fs = lfs * 0.8;
+                    lh = llh;
+                } else {
+                    fs = this.options.size / 13;
+                    lh = (5 * fs) + parseInt(this.options.size, 10);
+                }
 
                 this.legend.css({
                     display: 'inline-block',
@@ -113,9 +116,8 @@
                     lineHeight: lh + 'px'
                 });
             },
-            create: function (nv, ov) {
-
-                var self = this,
+            create(nv, ov) {
+                const self = this,
                     type = this.getType(),
                     bounds = this.getBounds(type),
                     duration = this.getDuration(),
@@ -124,10 +126,10 @@
                     value = this.clamp(this.getValue(), min, max),
                     start = bounds.head,
                     unit = (bounds.tail - bounds.head) / (max - min),
-                    displacement = unit * (value - min),
                     tail = bounds.tail,
-                    color = this.getForegroundColorByRange(value),
-                    requestID,
+                    color = this.getForegroundColorByRange(value);
+                let requestId,
+                    displacement = unit * (value - min),
                     startTime;
 
                 if (nv && ov) {
@@ -136,50 +138,53 @@
 
                 function animate(timestamp) {
                     timestamp = timestamp || new Date().getTime();
-                    var runtime = timestamp - startTime;
-                    var progress = Math.min(runtime / duration, 1); // never exceed 100%
-                    var previousProgress = ov ? (ov * unit) : 0;
-                    var middle = start + previousProgress + displacement * progress;
+                    const runtime = timestamp - startTime;
+                    const progress = Math.min(runtime / duration, 1);
+
+                    let previousProgress;
+                    if (ov) {
+                        // Fixed calculation: (ov*unit) => ((ov-min)*unit).
+                        previousProgress = (ov - min) * unit;
+                    } else {
+                        previousProgress = 0;
+                    }
+
+                    const middle = start + previousProgress + (displacement * progress);
 
                     self.drawShell(start, middle, tail, color);
                     if (runtime < duration) {
-                        requestID = window.requestAnimationFrame(function (timestamp) {
+                        requestId = window.requestAnimationFrame(function(timestamp) {
                             animate(timestamp);
                         });
                     } else {
-                        cancelAnimationFrame(requestID);
+                        cancelAnimationFrame(requestId);
                     }
                 }
 
-                requestAnimationFrame(function (timestamp) {
+                requestAnimationFrame(function(timestamp) {
                     startTime = timestamp || new Date().getTime();
                     animate(timestamp);
                 });
-
             },
 
-            getBounds: function (type) {
-                var head, tail;
-                if (type == 'semi') {
+            getBounds(type) {
+                let head, tail;
+                if (type === 'semi') {
                     head = Math.PI;
                     tail = 2 * Math.PI;
-                } else if (type == 'full') {
+                } else if (type === 'full') {
                     head = 1.5 * Math.PI;
                     tail = 3.5 * Math.PI;
-                } else if (type === 'arch') {
+                } else {
                     head = 0.8 * Math.PI;
                     tail = 2.2 * Math.PI;
                 }
 
-                return {
-                    head: head,
-                    tail: tail
-                };
-
+                return { head, tail };
             },
 
-            drawShell: function (start, middle, tail, color) {
-                var
+            drawShell(start, middle, tail, color) {
+                const
                     context = this.context,
                     center = this.getCenter(),
                     radius = this.getRadius(),
@@ -188,9 +193,11 @@
 
                 this.clear();
 
-                middle = Math.max(middle, start); // never below 0%
-                middle = Math.min(middle, tail); // never exceed 100%
+                // never below 0%
+                middle = Math.max(middle, start);
 
+                // never exceed 100%
+                middle = Math.min(middle, tail);
 
                 context.beginPath();
                 context.strokeStyle = backgroundColor;
@@ -201,95 +208,92 @@
                 context.strokeStyle = foregroundColor;
                 context.arc(center.x, center.y, radius, start, middle, false);
                 context.stroke();
-
             },
 
-            clear: function () {
+            clear() {
                 this.context.clearRect(0, 0, this.getWidth(), this.getHeight());
             },
 
-            update: function (nv, ov) {
+            update(nv, ov) {
                 this.create(nv, ov);
             },
 
-            destroy: function () {
+            destroy() {
                 this.clear();
             },
 
-            getRadius: function () {
-                var center = this.getCenter();
+            getRadius() {
+                const center = this.getCenter();
                 return center.x - this.getThickness();
             },
 
-            getCenter: function () {
-                var x = this.getWidth() / 2,
+            getCenter() {
+                const x = this.getWidth() / 2,
                     y = this.getHeight() / 2;
-                return {
-                    x: x,
-                    y: y
-                };
+                return { x, y };
             },
 
-            getValue: function () {
+            getValue() {
                 return this.options.value;
             },
-            getMin: function () {
+            getMin() {
                 return this.options.min;
             },
-            getMax: function () {
+            getMax() {
                 return this.options.max;
             },
-            getWidth: function () {
+            getWidth() {
                 return this.context.canvas.width;
             },
 
-            getHeight: function () {
+            getHeight() {
                 return this.context.canvas.height;
             },
 
-            getThickness: function () {
+            getThickness() {
                 return this.options.thick;
             },
 
-            getBackgroundColor: function () {
+            getBackgroundColor() {
                 return this.options.backgroundColor;
             },
 
-            getForegroundColor: function () {
+            getForegroundColor() {
                 return this.options.foregroundColor;
             },
 
-            getForegroundColorByRange: function (value) {
-
-                var isNumber = function (value) {
-                    return value != undefined && !isNaN(parseFloat(value)) && !isNaN(Number(value));
+            getForegroundColorByRange(value) {
+                const isNumber = function(value) {
+                    return value && !isNaN(parseFloat(value)) && !isNaN(Number(value));
                 };
 
-                var match = Object.keys(this.options.thresholds)
-                    .filter(function (item) { return isNumber(item) && Number(item) <= value; })
-                    .sort(function(a,b) {return Number(a) > Number(b);}).reverse()[0];
+                const match = Object.keys(this.options.thresholds)
+                    .filter(function(item) { return isNumber(item) && Number(item) <= value; })
+                    .sort(function(a, b) { return Number(a) > Number(b); }).reverse()[0];
 
-                return match !== undefined ? this.options.thresholds[match].color || this.getForegroundColor() : this.getForegroundColor();
+                if (match) {
+                    return this.options.thresholds[match].color || this.getForegroundColor();
+                } else {
+                    return this.getForegroundColor();
+                }
             },
 
-            getLineCap: function () {
+            getLineCap() {
                 return this.options.cap;
             },
 
-            getType: function () {
+            getType() {
                 return this.options.type;
             },
 
-            getDuration: function () {
+            getDuration() {
                 return this.options.duration;
             },
 
-            clamp: function (value, min, max) {
+            clamp(value, min, max) {
                 return Math.max(min, Math.min(max, value));
             }
-
         };
-
 
         return {
             restrict: 'E',
@@ -314,23 +318,88 @@
                 fractionSize: '=?'
 
             },
-            link: function (scope, element) {
-                var defaults = ngGauge.getOptions(); // fetching default settings from provider
-                scope.min = angular.isDefined(scope.min) ? scope.min : defaults.min;
-                scope.max = angular.isDefined(scope.max) ? scope.max : defaults.max;
-                scope.value = angular.isDefined(scope.value) ? scope.value : defaults.value;
-                scope.size = angular.isDefined(scope.size) ? scope.size : defaults.size;
-                scope.cap = angular.isDefined(scope.cap) ? scope.cap : defaults.cap;
-                scope.thick = angular.isDefined(scope.thick) ? scope.thick : defaults.thick;
-                scope.type = angular.isDefined(scope.type) ? scope.type : defaults.type;
-                scope.duration = angular.isDefined(scope.duration) ? scope.duration : defaults.duration;
-                scope.labelOnly = angular.isDefined(scope.labelOnly) ? scope.labelOnly : defaults.labelOnly;
-                scope.foregroundColor = angular.isDefined(scope.foregroundColor) ? scope.foregroundColor : defaults.foregroundColor;
-                scope.backgroundColor = angular.isDefined(scope.backgroundColor) ? scope.backgroundColor : defaults.backgroundColor;
-                scope.thresholds = angular.isDefined(scope.thresholds) ? scope.thresholds : {};
-                scope.fractionSize = angular.isDefined(scope.fractionSize) ? scope.fractionSize : defaults.fractionSize;
+            link(scope, element) {
+                // fetching default settings from provider
+                const defaults = ngGauge.getOptions();
+                if (angular.isDefined(scope.min)) {
+                    scope.min = scope.min;
+                } else {
+                    scope.min = defaults.min;
+                }
 
-                var gauge = new Gauge(element, scope);
+                if (angular.isDefined(scope.max)) {
+                    scope.max = scope.max;
+                } else {
+                    scope.max = defaults.max;
+                }
+
+                if (angular.isDefined(scope.value)) {
+                    scope.value = scope.value;
+                } else {
+                    scope.value = defaults.value;
+                }
+
+                if (angular.isDefined(scope.size)) {
+                    scope.size = scope.size;
+                } else {
+                    scope.size = defaults.size;
+                }
+
+                if (angular.isDefined(scope.cap)) {
+                    scope.cap = scope.cap;
+                } else {
+                    scope.cap = defaults.cap;
+                }
+
+                if (angular.isDefined(scope.thick)) {
+                    scope.thick = scope.thick;
+                } else {
+                    scope.thick = defaults.thick;
+                }
+
+                if (angular.isDefined(scope.type)) {
+                    scope.type = scope.type;
+                } else {
+                    scope.type = defaults.type;
+                }
+
+                if (angular.isDefined(scope.duration)) {
+                    scope.duration = scope.duration;
+                } else {
+                    scope.duration = defaults.duration;
+                }
+
+                if (angular.isDefined(scope.labelOnly)) {
+                    scope.labelOnly = scope.labelOnly;
+                } else {
+                    scope.labelOnly = defaults.labelOnly;
+                }
+
+                if (angular.isDefined(scope.foregroundColor)) {
+                    scope.foregroundColor = scope.foregroundColor;
+                } else {
+                    scope.foregroundColor = defaults.foregroundColor;
+                }
+
+                if (angular.isDefined(scope.backgroundColor)) {
+                    scope.backgroundColor = scope.backgroundColor;
+                } else {
+                    scope.backgroundColor = defaults.backgroundColor;
+                }
+
+                if (angular.isDefined(scope.thresholds)) {
+                    scope.thresholds = scope.thresholds;
+                } else {
+                    scope.thresholds = {};
+                }
+
+                if (angular.isDefined(scope.fractionSize)) {
+                    scope.fractionSize = scope.fractionSize;
+                } else {
+                    scope.fractionSize = defaults.fractionSize;
+                }
+
+                const gauge = new Gauge(element, scope);
 
                 scope.$watch('value', watchData, false);
                 scope.$watch('min', watchData, false);
@@ -345,22 +414,30 @@
                 scope.$watch('thresholds', watchOther, false);
                 scope.$watch('fractionSize', watchData, false);
 
-                scope.$on('$destroy', function () { });
-                scope.$on('$resize', function () { });
+                scope.$on('$destroy', function() {});
+                scope.$on('$resize', function() {});
 
                 function watchData(nv, ov) {
-                    if (!gauge) return;
-                    if (!angular.isDefined(nv) || angular.equals(nv, ov)) return;
+                    if (!gauge) {
+                        return;
+                    }
+
+                    if (!angular.isDefined(nv) || angular.equals(nv, ov)) {
+                        return;
+                    }
+
                     gauge.update(nv, ov);
                 }
 
                 function watchOther(nv, ov) {
-                    if (!angular.isDefined(nv) || angular.equals(nv, ov)) return;
+                    if (!angular.isDefined(nv) || angular.equals(nv, ov)) {
+                        return;
+                    }
+
                     gauge.destroy();
                     gauge.init();
                 }
             }
         };
-
     }
 }(angular));
